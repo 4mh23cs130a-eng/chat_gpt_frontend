@@ -11,7 +11,12 @@ const Dashboard = () => {
     const [editContent, setEditContent] = useState('');
     const [savedChats, setSavedChats] = useState([]);
     const [user, setUser] = useState(null);
+    const [images, setImages] = useState([]); // Base64 strings for preview and sending
+    const [isListening, setIsListening] = useState(false);
+    const [language, setLanguage] = useState('en-US'); // 'en-US' or 'kn-IN'
+    const [isSpeaking, setIsSpeaking] = useState(false);
     const chatEndRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     // Persistence: Load history from localStorage
     useEffect(() => {
@@ -51,9 +56,9 @@ const Dashboard = () => {
     const handleAsk = async (e, customMessage = null, systemPrompt = "You are a helpful assistant.") => {
         if (e) e.preventDefault();
         const finalMessage = customMessage || message;
-        if (!finalMessage.trim()) return;
+        if (!finalMessage.trim() && images.length === 0) return;
 
-        const userMsg = { role: 'user', content: finalMessage, originalContent: finalMessage, timestamp: new Date().toISOString() };
+        const userMsg = { role: 'user', content: finalMessage, images: [...images], timestamp: new Date().toISOString() };
         setChatHistory(prev => [...prev, userMsg]);
         setLoading(true);
         setMessage('');
@@ -62,13 +67,23 @@ const Dashboard = () => {
             const response = await fetch('http://127.0.0.1:8000/ask', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: finalMessage, system_prompt: systemPrompt }),
+                body: JSON.stringify({
+                    message: finalMessage,
+                    images: images,
+                    system_prompt: systemPrompt
+                }),
             });
 
             const data = await response.json();
-            const aiMsg = { role: 'ai', content: data.response, timestamp: new Date().toISOString() };
+            const aiMsg = {
+                role: 'ai',
+                content: data.response,
+                images: [],
+                timestamp: new Date().toISOString()
+            };
             const newHistory = [...chatHistory, userMsg, aiMsg];
             setChatHistory(newHistory);
+            setImages([]); // Clear images after sending
 
             // Auto-save session to history if it's new
             if (chatHistory.length === 0) {
@@ -77,7 +92,7 @@ const Dashboard = () => {
                 setSavedChats(updatedSavedChats);
                 localStorage.setItem('ai_chat_history', JSON.stringify(updatedSavedChats));
             } else {
-                // Update current session
+                // Update current session (assuming the active session is the first one in the list for simplicity)
                 const updatedSavedChats = savedChats.map((s, i) => i === 0 ? { ...s, messages: newHistory } : s);
                 setSavedChats(updatedSavedChats);
                 localStorage.setItem('ai_chat_history', JSON.stringify(updatedSavedChats));
@@ -97,6 +112,11 @@ const Dashboard = () => {
         handleAsk(null, editContent);
     };
 
+    const handleEdit = (index) => {
+        setEditingIndex(index);
+        setEditContent(chatHistory[index].content);
+    };
+
     const handleSpecialAction = (type) => {
         let prompt = "You are a helpful assistant.";
         if (type === "Code") prompt = "You are an expert software engineer. Provide high-quality, clean code snippets with explanations.";
@@ -110,6 +130,68 @@ const Dashboard = () => {
     const loadChatSession = (session) => {
         setChatHistory(session.messages);
         setActiveTab('chat');
+    };
+
+    // Voice Input Logic
+    const startListening = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Your browser does not support speech recognition.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = language;
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            setMessage(prev => prev + (prev ? ' ' : '') + transcript);
+        };
+
+        recognition.start();
+    };
+
+    // Voice Output Logic
+    const speakText = (text) => {
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+            return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+
+        // Find a suitable voice if possible
+        const voices = window.speechSynthesis.getVoices();
+        if (language === 'kn-IN') {
+            const knVoice = voices.find(v => v.lang.includes('kn'));
+            if (knVoice) utterance.voice = knVoice;
+        }
+
+        window.speechSynthesis.speak(utterance);
+    };
+
+    // File Attachment Logic
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files);
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImages(prev => [...prev, reader.result]);
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const removeImage = (index) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const sidebarItems = [
@@ -249,12 +331,26 @@ const Dashboard = () => {
                                         </div>
                                     ) : (
                                         <>
-                                            <p className="text-[17px] leading-relaxed whitespace-pre-wrap">{chat.content}</p>
-                                            {chat.role === 'user' && (
-                                                <button onClick={() => handleEdit(i)} className="absolute -left-12 top-2 p-2 rounded-full hover:bg-slate-800 text-slate-500 transition-all" title="Edit">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                                </button>
+                                            {chat.images?.length > 0 && (
+                                                <div className="flex flex-wrap gap-2 mb-3">
+                                                    {chat.images.map((img, idx) => (
+                                                        <img key={idx} src={img} alt="attached" className="w-32 h-32 object-cover rounded-xl border border-white/10" />
+                                                    ))}
+                                                </div>
                                             )}
+                                            <p className="text-[17px] leading-relaxed whitespace-pre-wrap">{chat.content}</p>
+
+                                            {/* Action Buttons */}
+                                            <div className={`absolute ${chat.role === 'user' ? '-left-14' : '-right-14'} top-0 flex flex-col gap-2`}>
+                                                {chat.role === 'user' && (
+                                                    <button onClick={() => handleEdit(i)} className="p-2 rounded-full hover:bg-slate-800 text-slate-500 transition-all" title="Edit">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                    </button>
+                                                )}
+                                                <button onClick={() => speakText(chat.content)} className={`p-2 rounded-full hover:bg-slate-800 transition-all ${isSpeaking ? 'text-sky-400' : 'text-slate-500'}`} title="Speak">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                                                </button>
+                                            </div>
                                         </>
                                     )}
                                 </div>
@@ -272,11 +368,44 @@ const Dashboard = () => {
 
                 {/* Unified Input Section */}
                 <div className={`w-full max-w-4xl p-8 pb-12 transition-all duration-500 ${activeTab === 'profile' ? 'opacity-0 pointer-events-none translate-y-20' : 'opacity-100'}`}>
+
+                    {/* Image Previews */}
+                    {images.length > 0 && (
+                        <div className="flex flex-wrap gap-4 mb-4 px-8">
+                            {images.map((img, i) => (
+                                <div key={i} className="relative group">
+                                    <img src={img} alt="preview" className="w-20 h-20 object-cover rounded-xl border-2 border-sky-500/50" />
+                                    <button onClick={() => removeImage(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     <form onSubmit={handleAsk} className="relative group">
                         <div className="absolute -inset-1 bg-gradient-to-r from-sky-500 to-indigo-500 rounded-[2.5rem] blur-xl opacity-20 group-focus-within:opacity-40 transition duration-700"></div>
-                        <div className="relative flex items-center">
-                            <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type your request here..." className="w-full bg-[#1e293b] border-2 border-slate-800 rounded-[2.5rem] px-8 py-5 focus:outline-none focus:border-sky-500/50 text-white placeholder-slate-600 shadow-2xl resize-none max-h-40" rows="1" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(e); } }} />
-                            <button type="submit" disabled={loading || !message.trim()} className="absolute right-3 p-4 bg-gradient-to-br from-sky-500 to-indigo-600 text-white rounded-[1.75rem] hover:scale-105 transition-all shadow-lg active:scale-95 disabled:opacity-50">
+                        <div className="relative flex items-center gap-2 bg-[#1e293b] border-2 border-slate-800 rounded-[2.5rem] px-6 py-2">
+
+                            {/* Attachment Button */}
+                            <button type="button" onClick={() => fileInputRef.current.click()} className="p-3 text-slate-400 hover:text-sky-400 transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                            </button>
+                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple accept="image/*" />
+
+                            {/* Voice Input Button */}
+                            <button type="button" onClick={startListening} className={`p-3 transition-colors ${isListening ? 'text-red-500 animate-pulse' : 'text-slate-400 hover:text-sky-400'}`}>
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                            </button>
+
+                            {/* Language Toggle */}
+                            <button type="button" onClick={() => setLanguage(prev => prev === 'en-US' ? 'kn-IN' : 'en-US')} className="text-[10px] font-black bg-slate-800 text-sky-400 px-2 py-1 rounded-md border border-sky-500/20 hover:bg-slate-700 transition-colors">
+                                {language === 'en-US' ? 'EN' : 'KN'}
+                            </button>
+
+                            <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type your request here..." className="flex-1 bg-transparent border-none py-3 focus:outline-none text-white placeholder-slate-600 resize-none max-h-40" rows="1" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(e); } }} />
+
+                            <button type="submit" disabled={loading || (!message.trim() && images.length === 0)} className="p-4 bg-gradient-to-br from-sky-500 to-indigo-600 text-white rounded-[1.75rem] hover:scale-105 transition-all shadow-lg active:scale-95 disabled:opacity-50">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
                             </button>
                         </div>
@@ -289,4 +418,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
