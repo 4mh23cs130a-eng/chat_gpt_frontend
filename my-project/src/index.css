@@ -30,3 +30,111 @@ body {
     background-color: #0f172a;
     color: #f8fafc;
 }
+
+/* Markdown Styles */
+.markdown-content h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 1.5rem 0 1rem;
+    color: white;
+}
+
+.markdown-content h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 1.25rem 0 0.75rem;
+    color: white;
+}
+
+.markdown-content h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin: 1rem 0 0.5rem;
+    color: white;
+}
+
+.markdown-content p {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+}
+
+.markdown-content ul {
+    list-style: disc;
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.markdown-content ol {
+    list-style: decimal;
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.markdown-content li {
+    margin-bottom: 0.5rem;
+}
+
+.markdown-content code {
+    background: rgba(15, 23, 42, 0.5);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    color: #38bdf8;
+}
+
+.markdown-content pre {
+    background: #0a0f1d;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(14, 165, 233, 0.1);
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+}
+
+.markdown-content pre code {
+    background: none;
+    padding: 0;
+    color: #e2e8f0;
+    font-size: 0.95rem;
+}
+
+.markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    background: rgba(30, 41, 59, 0.3);
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.markdown-content th {
+    background: rgba(14, 165, 233, 0.1);
+    text-align: left;
+    padding: 0.75rem;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.markdown-content td {
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid #0ea5e9;
+    padding-left: 1.5rem;
+    font-style: italic;
+    color: #94a3b8;
+    margin: 1.5rem 0;
+}
+
+.markdown-content a {
+    color: #38bdf8;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.markdown-content a:hover {
+    color: #7dd3fc;
+}

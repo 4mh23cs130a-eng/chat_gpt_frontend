@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -338,7 +340,15 @@ const Dashboard = () => {
                                                     ))}
                                                 </div>
                                             )}
-                                            <p className="text-[17px] leading-relaxed whitespace-pre-wrap">{chat.content}</p>
+                                            <div className="text-[17px] leading-relaxed markdown-content">
+                                                {chat.role === 'ai' ? (
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                        {chat.content}
+                                                    </ReactMarkdown>
+                                                ) : (
+                                                    <p className="whitespace-pre-wrap">{chat.content}</p>
+                                                )}
+                                            </div>
 
                                             {/* Action Buttons */}
                                             <div className={`absolute ${chat.role === 'user' ? '-left-14' : '-right-14'} top-0 flex flex-col gap-2`}>
