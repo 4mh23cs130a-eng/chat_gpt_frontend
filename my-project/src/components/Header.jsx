@@ -36,8 +36,9 @@ const Header = () => {
                     <Link to="/" className="nav-link">Home</Link>
                     <Link to="/about" className="nav-link">About</Link>
                     <Link to="/contact" className="nav-link">Contact</Link>
-                    {isLoggedIn && <Link to="/dashboard" className="nav-link">Dashboard</Link>}
+                    {isLoggedIn && <Link to="/dashboard" className="nav-link font-bold text-sky-400">Dashboard</Link>}
                 </nav>
+
 
                 <div className="header-actions">
                     {isLoggedIn ? (
