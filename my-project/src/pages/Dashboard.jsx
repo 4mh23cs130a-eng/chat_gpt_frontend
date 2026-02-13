@@ -30,7 +30,7 @@ const Dashboard = () => {
             const token = localStorage.getItem('access_token');
             if (!token) return;
             try {
-                const response = await fetch('http://127.0.0.1:8000/me', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
@@ -66,7 +66,7 @@ const Dashboard = () => {
         setMessage('');
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/ask', {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/ask`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -15,7 +15,7 @@ const AskAI = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/ask', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -29,7 +29,7 @@ const AskAI = () => {
       });
 
       const data = await response.json();
-      
+
       // Add AI response to UI
       setChatHistory(prev => [...prev, { role: 'ai', content: data.response }]);
       setMessage(''); // Clear input
@@ -45,9 +45,8 @@ const AskAI = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4 border-b">
         {chatHistory.map((chat, i) => (
           <div key={i} className={`flex ${chat.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`p-3 rounded-lg max-w-[80%] ${
-              chat.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-800'
-            }`}>
+            <div className={`p-3 rounded-lg max-w-[80%] ${chat.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-800'
+              }`}>
               {chat.content}
             </div>
           </div>
@@ -63,7 +62,7 @@ const AskAI = () => {
           placeholder="Ask something..."
           className="flex-1 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
         />
-        <button 
+        <button
           type="submit"
           className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition"
         >
